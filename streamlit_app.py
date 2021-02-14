@@ -64,11 +64,21 @@ with col2:
 if st.button("Predict"):
     with st.spinner("Predicting..."):
         clip_response = booste.clip(BOOSTE_API_KEY,
-                        prompts=input_prompts,
-                        images=[session_state.image],
-                        pretty_print=True)
-        st.write(clip_response)
+                                    prompts=input_prompts,
+                                    images=[session_state.image],
+                                    pretty_print=True)
+        st.markdown("### Results")
+        simplified_clip_results = [(prompt[len('A picture of a '):],
+                                    list(results.values())[0]["probabilityRelativeToPrompts"])
+                                   for prompt, results in clip_response.items()]
+        simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
+        max_class_name_length = max(len(class_name) for class_name, _ in simplified_clip_results)
 
+        for prompt, probability in simplified_clip_results:
+            progress_bar = "".join([":large_blue_circle:"] * int(probability * 10) +
+                                   [":black_circle:"] * int((1 - probability) * 10))
+            st.markdown(f"### {prompt}: {progress_bar} {probability:.3f}")
+        st.write(clip_response)
 
 session_state.sync()
 
