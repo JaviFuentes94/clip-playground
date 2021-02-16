@@ -1,14 +1,36 @@
+import random
 from typing import Optional, List
 
-from PIL import Image
-import streamlit as st
 import booste
+import streamlit as st
 
 from session_state import SessionState, get_state
 
 # Unfortunately Streamlit sharing does not allow to hide enviroment variables yet.
 # Do not copy this API key, go to https://www.booste.io/ and get your own, it is free!
 BOOSTE_API_KEY = "3818ba84-3526-4029-9dc8-ef3038697ea2"
+
+IMAGES_LINKS = ["https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2019/09/06/04/25/beach-4455433_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2019/10/19/12/21/hot-air-balloons-4561264_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/12/28/22/48/buddha-5868759_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/11/04/15/29/coffee-beans-5712780_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/03/24/20/42/namibia-4965457_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/08/27/07/31/restaurant-5521372_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/08/28/06/13/building-5523630_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/08/24/21/41/couple-5515141_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/01/31/07/10/billboards-4807268_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2017/07/31/20/48/shell-2560930_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2020/08/13/01/29/koala-5483931_960_720.jpg",
+                "https://cdn.pixabay.com/photo/2016/11/29/04/52/architecture-1867411_960_720.jpg",
+                ]
+
+@st.cache
+def select_random_dataset():
+    return random.sample(IMAGES_LINKS, 10)
 
 
 class Sections:
@@ -35,17 +57,30 @@ class Sections:
             default_image_1 = "https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg"
             st.image(default_image_1, use_column_width=True)
             if st.button("Select image 1"):
-                state.image = default_image_1
+                state.images = [default_image_1]
         with col2:
             default_image_2 = "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg"
             st.image(default_image_2, use_column_width=True)
             if st.button("Select image 2"):
-                state.image = default_image_2
+                state.images = [default_image_2]
         with col3:
             default_image_3 = "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg"
             st.image(default_image_3, use_column_width=True)
             if st.button("Select image 3"):
-                state.image = default_image_3
+                state.images = [default_image_3]
+
+    @staticmethod
+    def dataset_picker(state: SessionState):
+        columns = st.beta_columns(5)
+        state.dataset = select_random_dataset()
+        image_idx = 0
+        for col in columns:
+            col.image(state.dataset[image_idx])
+            image_idx += 1
+            col.image(state.dataset[image_idx])
+            image_idx += 1
+        if st.button("Select random dataset"):
+            state.images = state.dataset
 
     @staticmethod
     def prompts_input(state: SessionState, input_label: str, prompt_prefix: str = ''):
@@ -55,22 +90,43 @@ class Sections:
             state.prompt_prefix = prompt_prefix
 
     @staticmethod
-    def input_preview(state: SessionState):
+    def single_image_input_preview(state: SessionState):
         col1, col2 = st.beta_columns([2, 1])
         with col1:
             st.markdown("Image to classify")
-            if state.image is not None:
-                st.image(state.image, use_column_width=True)
+            if state.images is not None:
+                st.image(state.images[0], use_column_width=True)
             else:
                 st.warning("Select an image")
 
         with col2:
             st.markdown("Labels to choose from")
-            if state.processed_classes is not None:
+            if state.prompts is not None:
                 for prompt in state.prompts:
                     st.write(prompt[len(state.prompt_prefix):])
             else:
                 st.warning("Enter the classes to classify from")
+
+    @staticmethod
+    def multiple_images_input_preview(state: SessionState):
+        st.markdown("Images to classify")
+        col1, col2, col3 = st.beta_columns(3)
+        if state.images is not None:
+            for idx, image in enumerate(state.images):
+                if idx < len(state.images) / 2:
+                    col1.image(state.images[idx], use_column_width=True)
+                else:
+                    col2.image(state.images[idx], use_column_width=True)
+        else:
+            col1.warning("Select an image")
+
+        with col3:
+            st.markdown("Query prompt")
+            if state.prompts is not None:
+                for prompt in state.prompts:
+                    st.write(prompt[len(state.prompt_prefix):])
+            else:
+                st.warning("Enter the prompt to classify")
 
     @staticmethod
     def classification_output(state: SessionState):
@@ -79,19 +135,32 @@ class Sections:
             with st.spinner("Predicting..."):
                 clip_response = booste.clip(BOOSTE_API_KEY,
                                             prompts=state.prompts,
-                                            images=[state.image],
+                                            images=state.images,
                                             pretty_print=True)
                 st.markdown("### Results")
-                simplified_clip_results = [(prompt[len(state.prompt_prefix):],
-                                            list(results.values())[0]["probabilityRelativeToPrompts"])
-                                           for prompt, results in clip_response.items()]
-                simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
+                # st.write(clip_response)
+                if len(state.images) == 1:
+                    simplified_clip_results = [(prompt[len(state.prompt_prefix):],
+                                                list(results.values())[0]["probabilityRelativeToPrompts"])
+                                               for prompt, results in clip_response.items()]
+                    simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
 
-                for prompt, probability in simplified_clip_results:
-                    percentage_prob = int(probability * 100)
-                    st.markdown(
-                        f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200) &nbsp &nbsp {prompt}")
-                st.write(clip_response)
+                    for prompt, probability in simplified_clip_results:
+                        percentage_prob = int(probability * 100)
+                        st.markdown(
+                            f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200) &nbsp &nbsp {prompt}")
+                else:
+                    st.markdown(f"### {state.prompts[0]}")
+                    assert len(state.prompts) == 1
+                    simplified_clip_results = [(image, results["probabilityRelativeToImages"]) for image, results
+                                               in list(clip_response.values())[0].items()]
+                    simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
+                    for image, probability in simplified_clip_results[:5]:
+                        col1, col2 = st.beta_columns([1, 3])
+                        col1.image(image, use_column_width=True)
+                        percentage_prob = int(probability * 100)
+                        col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
+
 
 
 task_name: str = st.sidebar.radio("Task", options=["Image classification", "Image ranking", "Prompt ranking"])
@@ -103,7 +172,7 @@ if task_name == "Image classification":
     Sections.image_picker(session_state)
     input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
     Sections.prompts_input(session_state, input_label, prompt_prefix='A picture of a ')
-    Sections.input_preview(session_state)
+    Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Prompt ranking":
     Sections.header()
@@ -113,17 +182,15 @@ elif task_name == "Prompt ranking":
     input_label = "Enter the prompts to choose from separated by a semi-colon. " \
                   "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
     Sections.prompts_input(session_state, input_label)
-    Sections.input_preview(session_state)
+    Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Image ranking":
     Sections.header()
     Sections.image_uploader(accept_multiple_files=True)
     st.markdown("or use random dataset")
-    Sections.image_picker(session_state)
-
-
+    Sections.dataset_picker(session_state)
+    Sections.prompts_input(session_state, "Enter the prompt to query the images by")
+    Sections.multiple_images_input_preview(session_state)
+    Sections.classification_output(session_state)
 
 session_state.sync()
-
-
-
