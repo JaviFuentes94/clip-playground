@@ -1,9 +1,40 @@
 import random
 from typing import Optional, List
+import uuid
 
-import booste
 import streamlit as st
+from mock import patch
 
+class ImagesMocker:
+    """HACK ALERT: I needed a way to call the booste API without storing the images first
+     (as that is not allowed in streamlit sharing). If you have a better idea on hwo to this let me know!"""
+
+    def __init__(self):
+        self.pil_patch = patch('PIL.Image.open', lambda x: self.image_id2image(x))
+        self.path_patch = patch('os.path.exists', lambda x: True)
+        self.image_id2image_lookup = {}
+
+    def start_mocking(self):
+        self.pil_patch.start()
+        self.path_patch.start()
+
+    def stop_mocking(self):
+        self.pil_patch.stop()
+        self.path_patch.stop()
+
+    def image_id2image(self, image_id: str):
+        return self.image_id2image_lookup[image_id]
+
+    def calculate_image_id2image_lookup(self, images: List):
+        self.image_id2image_lookup = {str(uuid.uuid4()) + ".png": image for image in images}
+    @property
+    def image_ids(self):
+        return list(self.image_id2image_lookup.keys())
+
+images_mocker = ImagesMocker()
+import booste
+
+from PIL import Image
 from session_state import SessionState, get_state
 
 # Unfortunately Streamlit sharing does not allow to hide enviroment variables yet.
@@ -28,7 +59,7 @@ IMAGES_LINKS = ["https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_9
                 "https://cdn.pixabay.com/photo/2016/11/29/04/52/architecture-1867411_960_720.jpg",
                 ]
 
-@st.cache
+@st.cache  # Cache this so that it doesn't change every time something changes in the page
 def select_random_dataset():
     return random.sample(IMAGES_LINKS, 10)
 
@@ -46,9 +77,17 @@ class Sections:
         st.markdown(" ")
 
     @staticmethod
-    def image_uploader(accept_multiple_files: bool) -> Optional[List[str]]:
-        uploaded_image = st.file_uploader("Upload image", type=[".png", ".jpg", ".jpeg"],
-                                          accept_multiple_files=accept_multiple_files)
+    def image_uploader(state: SessionState, accept_multiple_files: bool):
+        uploaded_images = st.file_uploader("Upload image", type=[".png", ".jpg", ".jpeg"],
+                                           accept_multiple_files=accept_multiple_files)
+        if uploaded_images is not None or (accept_multiple_files and len(uploaded_images) > 1):
+            images = []
+            if not accept_multiple_files:
+                uploaded_images = [uploaded_images]
+            for uploaded_image in uploaded_images:
+                images.append(Image.open(uploaded_image))
+            state.images = images
+
 
     @staticmethod
     def image_picker(state: SessionState):
@@ -117,8 +156,11 @@ class Sections:
                     col1.image(state.images[idx], use_column_width=True)
                 else:
                     col2.image(state.images[idx], use_column_width=True)
+            if len(state.images) < 2:
+                col2.warning("At least 2 images required")
         else:
             col1.warning("Select an image")
+
 
         with col3:
             st.markdown("Query prompt")
@@ -133,10 +175,19 @@ class Sections:
         # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
         if st.button("Predict"):
             with st.spinner("Predicting..."):
-                clip_response = booste.clip(BOOSTE_API_KEY,
-                                            prompts=state.prompts,
-                                            images=state.images,
-                                            pretty_print=True)
+                if isinstance(state.images[0], str):
+                    print("Regular call!")
+                    clip_response = booste.clip(BOOSTE_API_KEY,
+                                                prompts=state.prompts,
+                                                images=state.images)
+                else:
+                    print("Hacky call!")
+                    images_mocker.calculate_image_id2image_lookup(state.images)
+                    images_mocker.start_mocking()
+                    clip_response = booste.clip(BOOSTE_API_KEY,
+                                                prompts=state.prompts,
+                                                images=images_mocker.image_ids)
+                    images_mocker.stop_mocking()
                 st.markdown("### Results")
                 # st.write(clip_response)
                 if len(state.images) == 1:
@@ -152,8 +203,13 @@ class Sections:
                 else:
                     st.markdown(f"### {state.prompts[0]}")
                     assert len(state.prompts) == 1
-                    simplified_clip_results = [(image, results["probabilityRelativeToImages"]) for image, results
-                                               in list(clip_response.values())[0].items()]
+                    if isinstance(state.images[0], str):
+                        simplified_clip_results = [(image, results["probabilityRelativeToImages"]) for image, results
+                                                   in list(clip_response.values())[0].items()]
+                    else:
+                        simplified_clip_results = [(images_mocker.image_id2image(image),
+                                                    results["probabilityRelativeToImages"]) for image, results
+                                                   in list(clip_response.values())[0].items()]
                     simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
                     for image, probability in simplified_clip_results[:5]:
                         col1, col2 = st.beta_columns([1, 3])
@@ -162,35 +218,40 @@ class Sections:
                         col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
 
 
-
 task_name: str = st.sidebar.radio("Task", options=["Image classification", "Image ranking", "Prompt ranking"])
-session_state = get_state()
 if task_name == "Image classification":
+    session_state = get_state()
     Sections.header()
-    Sections.image_uploader(accept_multiple_files=False)
-    st.markdown("or choose one from")
-    Sections.image_picker(session_state)
+    Sections.image_uploader(session_state, accept_multiple_files=False)
+    if session_state.images is None:
+        st.markdown("or choose one from")
+        Sections.image_picker(session_state)
     input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
     Sections.prompts_input(session_state, input_label, prompt_prefix='A picture of a ')
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Prompt ranking":
+    session_state = get_state()
     Sections.header()
-    Sections.image_uploader(accept_multiple_files=False)
-    st.markdown("or choose one from")
-    Sections.image_picker(session_state)
+    Sections.image_uploader(session_state, accept_multiple_files=False)
+    if session_state.images is None:
+        st.markdown("or choose one from")
+        Sections.image_picker(session_state)
     input_label = "Enter the prompts to choose from separated by a semi-colon. " \
                   "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
     Sections.prompts_input(session_state, input_label)
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Image ranking":
+    session_state = get_state()
     Sections.header()
-    Sections.image_uploader(accept_multiple_files=True)
-    st.markdown("or use random dataset")
-    Sections.dataset_picker(session_state)
+    Sections.image_uploader(session_state, accept_multiple_files=True)
+    if session_state.images is None:
+        st.markdown("or use this random dataset")
+        Sections.dataset_picker(session_state)
     Sections.prompts_input(session_state, "Enter the prompt to query the images by")
     Sections.multiple_images_input_preview(session_state)
     Sections.classification_output(session_state)
+    print(session_state.images)
 
 session_state.sync()
