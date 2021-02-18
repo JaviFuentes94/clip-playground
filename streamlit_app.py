@@ -1,41 +1,14 @@
 import random
-from typing import Optional, List
-import uuid
 
 import streamlit as st
-from mock import patch
 
-class ImagesMocker:
-    """HACK ALERT: I needed a way to call the booste API without storing the images first
-     (as that is not allowed in streamlit sharing). If you have a better idea on hwo to this let me know!"""
-
-    def __init__(self):
-        self.pil_patch = patch('PIL.Image.open', lambda x: self.image_id2image(x))
-        self.path_patch = patch('os.path.exists', lambda x: True)
-        self.image_id2image_lookup = {}
-
-    def start_mocking(self):
-        self.pil_patch.start()
-        self.path_patch.start()
-
-    def stop_mocking(self):
-        self.pil_patch.stop()
-        self.path_patch.stop()
-
-    def image_id2image(self, image_id: str):
-        return self.image_id2image_lookup[image_id]
-
-    def calculate_image_id2image_lookup(self, images: List):
-        self.image_id2image_lookup = {str(uuid.uuid4()) + ".png": image for image in images}
-    @property
-    def image_ids(self):
-        return list(self.image_id2image_lookup.keys())
+from session_state import SessionState, get_state
+from images_mocker import ImagesMocker
 
 images_mocker = ImagesMocker()
 import booste
 
 from PIL import Image
-from session_state import SessionState, get_state
 
 # Unfortunately Streamlit sharing does not allow to hide enviroment variables yet.
 # Do not copy this API key, go to https://www.booste.io/ and get your own, it is free!
@@ -64,6 +37,18 @@ def select_random_dataset():
     return random.sample(IMAGES_LINKS, 10)
 
 
+def limit_number_images(state: SessionState):
+    """When moving between tasks sometimes the state of images can have too many samples"""
+    if state.images is not None and len(state.images) > 1:
+        state.images = [state.images[0]]
+
+
+def limit_number_prompts(state: SessionState):
+    """When moving between tasks sometimes the state of prompts can have too many samples"""
+    if state.prompts is not None and len(state.prompts) > 1:
+        state.prompts = [state.prompts[0]]
+
+
 class Sections:
     @staticmethod
     def header():
@@ -80,7 +65,7 @@ class Sections:
     def image_uploader(state: SessionState, accept_multiple_files: bool):
         uploaded_images = st.file_uploader("Upload image", type=[".png", ".jpg", ".jpeg"],
                                            accept_multiple_files=accept_multiple_files)
-        if uploaded_images is not None or (accept_multiple_files and len(uploaded_images) > 1):
+        if (not accept_multiple_files and uploaded_images is not None) or (accept_multiple_files and len(uploaded_images) >= 1):
             images = []
             if not accept_multiple_files:
                 uploaded_images = [uploaded_images]
@@ -142,9 +127,11 @@ class Sections:
             st.markdown("Labels to choose from")
             if state.prompts is not None:
                 for prompt in state.prompts:
-                    st.write(prompt[len(state.prompt_prefix):])
+                    st.markdown(f"* {prompt[len(state.prompt_prefix):]}")
+                if len(state.prompts) < 2:
+                    st.warning("At least two prompts/classes are needed")
             else:
-                st.warning("Enter the classes to classify from")
+                st.warning("Enter the prompts/classes to classify from")
 
     @staticmethod
     def multiple_images_input_preview(state: SessionState):
@@ -219,8 +206,8 @@ class Sections:
 
 
 task_name: str = st.sidebar.radio("Task", options=["Image classification", "Image ranking", "Prompt ranking"])
+session_state = get_state()
 if task_name == "Image classification":
-    session_state = get_state()
     Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
@@ -228,10 +215,10 @@ if task_name == "Image classification":
         Sections.image_picker(session_state)
     input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
     Sections.prompts_input(session_state, input_label, prompt_prefix='A picture of a ')
+    limit_number_images(session_state)
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Prompt ranking":
-    session_state = get_state()
     Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
@@ -240,16 +227,17 @@ elif task_name == "Prompt ranking":
     input_label = "Enter the prompts to choose from separated by a semi-colon. " \
                   "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
     Sections.prompts_input(session_state, input_label)
+    limit_number_images(session_state)
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Image ranking":
-    session_state = get_state()
     Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=True)
-    if session_state.images is None:
+    if session_state.images is None or len(session_state.images) < 2:
         st.markdown("or use this random dataset")
         Sections.dataset_picker(session_state)
     Sections.prompts_input(session_state, "Enter the prompt to query the images by")
+    limit_number_prompts(session_state)
     Sections.multiple_images_input_preview(session_state)
     Sections.classification_output(session_state)
     print(session_state.images)
