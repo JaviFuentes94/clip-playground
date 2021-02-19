@@ -16,20 +16,20 @@ BOOSTE_API_KEY = "3818ba84-3526-4029-9dc8-ef3038697ea2"
 
 IMAGES_LINKS = ["https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2019/09/06/04/25/beach-4455433_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2019/10/19/12/21/hot-air-balloons-4561264_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2020/12/28/22/48/buddha-5868759_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2019/10/19/12/21/hot-air-balloons-4561264_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2020/12/28/22/48/buddha-5868759_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/11/04/15/29/coffee-beans-5712780_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/03/24/20/42/namibia-4965457_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/27/07/31/restaurant-5521372_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2020/08/28/06/13/building-5523630_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2020/08/28/06/13/building-5523630_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/24/21/41/couple-5515141_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/01/31/07/10/billboards-4807268_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2017/07/31/20/48/shell-2560930_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/13/01/29/koala-5483931_960_720.jpg",
-                "https://cdn.pixabay.com/photo/2016/11/29/04/52/architecture-1867411_960_720.jpg",
+                # "https://cdn.pixabay.com/photo/2016/11/29/04/52/architecture-1867411_960_720.jpg",
                 ]
 
 @st.cache  # Cache this so that it doesn't change every time something changes in the page
@@ -54,12 +54,32 @@ class Sections:
     def header():
         st.markdown("# CLIP playground")
         st.markdown("### Try OpenAI's CLIP model in your browser")
-        st.markdown(" ");
+        st.markdown(" ")
         st.markdown(" ")
         with st.beta_expander("What is CLIP?"):
-            st.markdown("Nice CLIP explaination")
-        st.markdown(" ");
+            st.markdown("CLIP is a machine learning model that computes similarity between text "
+                        "(also called prompts) and images. It has been trained on a dataset with millions of diverse"
+                        " image-prompt pairs, which allows it to generalize to unseen examples."
+                        " <br /> Check out [OpenAI's blogpost](https://openai.com/blog/clip/) for more details",
+                        unsafe_allow_html=True)
+            col1, col2 = st.beta_columns(2)
+            col1.image("https://openaiassets.blob.core.windows.net/$web/clip/draft/20210104b/overview-a.svg")
+            col2.image("https://openaiassets.blob.core.windows.net/$web/clip/draft/20210104b/overview-b.svg")
+        with st.beta_expander("What can CLIP do?"):
+            st.markdown("#### Prompt ranking")
+            st.markdown("Given different prompts and an image it will rank the different prompts based on the similarity"
+                        " with what the image represents")
+            st.markdown("#### Image ranking")
+            st.markdown("Given different images and a prompt it will rank the different images based on the similarity"
+                        " with what the prompt expresses")
+            st.markdown("#### Image classification")
+            st.markdown("Similar to prompt ranking, given a set of classes it can classify an image between them. "
+                        "Think of [Hotdog/ Not hotdog](https://www.youtube.com/watch?v=pqTntG1RXSY&ab_channel=tvpromos) without any training. ")
         st.markdown(" ")
+        st.markdown(" ")
+        st.sidebar.markdown(" "); st.sidebar.markdown(" ")
+        st.sidebar.markdown("Created by [@JavierFnts](https://twitter.com/JavierFnts)")
+        st.sidebar.markdown("[How was CLIP playground created?](https://twitter.com/JavierFnts)")
 
     @staticmethod
     def image_uploader(state: SessionState, accept_multiple_files: bool):
@@ -75,23 +95,26 @@ class Sections:
 
 
     @staticmethod
-    def image_picker(state: SessionState):
+    def image_picker(state: SessionState, default_text_input: str):
         col1, col2, col3 = st.beta_columns(3)
         with col1:
             default_image_1 = "https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg"
             st.image(default_image_1, use_column_width=True)
             if st.button("Select image 1"):
                 state.images = [default_image_1]
+                state.default_text_input = default_text_input
         with col2:
             default_image_2 = "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg"
             st.image(default_image_2, use_column_width=True)
             if st.button("Select image 2"):
                 state.images = [default_image_2]
+                state.default_text_input = default_text_input
         with col3:
             default_image_3 = "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg"
             st.image(default_image_3, use_column_width=True)
             if st.button("Select image 3"):
                 state.images = [default_image_3]
+                state.default_text_input = default_text_input
 
     @staticmethod
     def dataset_picker(state: SessionState):
@@ -105,17 +128,19 @@ class Sections:
             image_idx += 1
         if st.button("Select random dataset"):
             state.images = state.dataset
+            state.default_text_input = "A sign that says 'SLOW DOWN'"
 
     @staticmethod
     def prompts_input(state: SessionState, input_label: str, prompt_prefix: str = ''):
-        raw_classes = st.text_input(input_label)
+        raw_classes = st.text_input(input_label,
+                                    value=state.default_text_input if state.default_text_input is not None else "")
         if raw_classes:
             state.prompts = [prompt_prefix + class_name for class_name in raw_classes.split(";") if len(class_name) > 1]
-            state.prompt_prefix = prompt_prefix
 
     @staticmethod
     def single_image_input_preview(state: SessionState):
-        col1, col2 = st.beta_columns([2, 1])
+        st.markdown("### Preview")
+        col1, col2 = st.beta_columns([1, 2])
         with col1:
             st.markdown("Image to classify")
             if state.images is not None:
@@ -127,7 +152,7 @@ class Sections:
             st.markdown("Labels to choose from")
             if state.prompts is not None:
                 for prompt in state.prompts:
-                    st.markdown(f"* {prompt[len(state.prompt_prefix):]}")
+                    st.markdown(f"* {prompt}")
                 if len(state.prompts) < 2:
                     st.warning("At least two prompts/classes are needed")
             else:
@@ -135,6 +160,7 @@ class Sections:
 
     @staticmethod
     def multiple_images_input_preview(state: SessionState):
+        st.markdown("### Preview")
         st.markdown("Images to classify")
         col1, col2, col3 = st.beta_columns(3)
         if state.images is not None:
@@ -148,27 +174,24 @@ class Sections:
         else:
             col1.warning("Select an image")
 
-
         with col3:
             st.markdown("Query prompt")
             if state.prompts is not None:
                 for prompt in state.prompts:
-                    st.write(prompt[len(state.prompt_prefix):])
+                    st.write(prompt)
             else:
                 st.warning("Enter the prompt to classify")
 
     @staticmethod
     def classification_output(state: SessionState):
         # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
-        if st.button("Predict"):
+        if st.button("PREDICT 🚀"):
             with st.spinner("Predicting..."):
                 if isinstance(state.images[0], str):
-                    print("Regular call!")
                     clip_response = booste.clip(BOOSTE_API_KEY,
                                                 prompts=state.prompts,
                                                 images=state.images)
                 else:
-                    print("Hacky call!")
                     images_mocker.calculate_image_id2image_lookup(state.images)
                     images_mocker.start_mocking()
                     clip_response = booste.clip(BOOSTE_API_KEY,
@@ -178,7 +201,7 @@ class Sections:
                 st.markdown("### Results")
                 # st.write(clip_response)
                 if len(state.images) == 1:
-                    simplified_clip_results = [(prompt[len(state.prompt_prefix):],
+                    simplified_clip_results = [(prompt,
                                                 list(results.values())[0]["probabilityRelativeToPrompts"])
                                                for prompt, results in clip_response.items()]
                     simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
@@ -205,25 +228,26 @@ class Sections:
                         col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
 
 
-task_name: str = st.sidebar.radio("Task", options=["Image classification", "Image ranking", "Prompt ranking"])
+task_name: str = st.sidebar.radio("Task", options=["Prompt ranking", "Image ranking", "Image classification"])
 session_state = get_state()
+Sections.header()
 if task_name == "Image classification":
-    Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
         st.markdown("or choose one from")
-        Sections.image_picker(session_state)
+        Sections.image_picker(session_state, default_text_input="banana; boat; bird")
     input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
     Sections.prompts_input(session_state, input_label, prompt_prefix='A picture of a ')
     limit_number_images(session_state)
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Prompt ranking":
-    Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
         st.markdown("or choose one from")
-        Sections.image_picker(session_state)
+        Sections.image_picker(session_state, default_text_input="A calm afternoon in the Mediterranean; "
+                                                                "A beautiful creature;"
+                                                                " Something that grows in tropical regions")
     input_label = "Enter the prompts to choose from separated by a semi-colon. " \
                   "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
     Sections.prompts_input(session_state, input_label)
@@ -231,7 +255,6 @@ elif task_name == "Prompt ranking":
     Sections.single_image_input_preview(session_state)
     Sections.classification_output(session_state)
 elif task_name == "Image ranking":
-    Sections.header()
     Sections.image_uploader(session_state, accept_multiple_files=True)
     if session_state.images is None or len(session_state.images) < 2:
         st.markdown("or use this random dataset")
