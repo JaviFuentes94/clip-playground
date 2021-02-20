@@ -59,6 +59,25 @@ def is_valid_prediction_state(state: SessionState) -> bool:
     return True
 
 
+def preprocess_image(image: Image.Image, max_size: int = 1200) -> Image.Image:
+    """Set up a max size because otherwise the API sometimes breaks"""
+    width_0, height_0 = image.size
+
+    if max((width_0, height_0)) <= max_size:
+        return image
+
+    if width_0 > height_0:
+        aspect_ratio = max_size / float(width_0)
+        new_height = int(float(height_0) * float(aspect_ratio))
+        image = image.resize((max_size, new_height), Image.ANTIALIAS)
+        return image
+    else:
+        aspect_ratio = max_size / float(height_0)
+        new_width = int(float(width_0) * float(aspect_ratio))
+        image = image.resize((max_size, new_width), Image.ANTIALIAS)
+        return image
+
+
 class Sections:
     @staticmethod
     def header():
@@ -113,7 +132,9 @@ class Sections:
             if not accept_multiple_files:
                 uploaded_images = [uploaded_images]
             for uploaded_image in uploaded_images:
-                images.append(Image.open(uploaded_image))
+                pil_image = Image.open(uploaded_image)
+                pil_image = preprocess_image(pil_image)
+                images.append(pil_image)
             state.images = images
 
 
