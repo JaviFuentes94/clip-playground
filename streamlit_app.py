@@ -52,7 +52,23 @@ def limit_number_prompts(state: SessionState):
 class Sections:
     @staticmethod
     def header():
-        st.markdown("# CLIP playground")
+        st.markdown('<link rel="stylesheet" '
+                    'href="https://fonts.googleapis.com/css?family=Merriweather+Sans">'
+                    '<style> '
+                    'h1 {font-family: "Merriweather Sans", sans-serif; font-size: 48px; color: #f57c70}'
+                    'a {color: #e6746a !important}'
+                    '.stButton>button {'
+                    '   color: white;'
+                    '   background: #e6746a;'
+                    '   display:inline-block;'
+                    '   width: 100%;'
+                    '   border-width: 0px;'
+                    '   font-weight: 500;'
+                    '   padding-top: 10px;'
+                    '   padding-bottom: 10px;'
+                    '}'
+                    '</style>', unsafe_allow_html=True)
+        st.markdown("# CLIP Playground")
         st.markdown("### Try OpenAI's CLIP model in your browser")
         st.markdown(" ")
         st.markdown(" ")
@@ -77,9 +93,6 @@ class Sections:
                         "Think of [Hotdog/ Not hotdog](https://www.youtube.com/watch?v=pqTntG1RXSY&ab_channel=tvpromos) without any training. ")
         st.markdown(" ")
         st.markdown(" ")
-        st.sidebar.markdown(" "); st.sidebar.markdown(" ")
-        st.sidebar.markdown("Created by [@JavierFnts](https://twitter.com/JavierFnts)")
-        st.sidebar.markdown("[How was CLIP playground created?](https://twitter.com/JavierFnts)")
 
     @staticmethod
     def image_uploader(state: SessionState, accept_multiple_files: bool):
@@ -185,7 +198,7 @@ class Sections:
     @staticmethod
     def classification_output(state: SessionState):
         # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
-        if st.button("PREDICT 🚀"):
+        if st.button("Predict"):  # PREDICT 🚀
             with st.spinner("Predicting..."):
                 if isinstance(state.images[0], str):
                     clip_response = booste.clip(BOOSTE_API_KEY,
@@ -228,9 +241,14 @@ class Sections:
                         col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
 
 
-task_name: str = st.sidebar.radio("Task", options=["Prompt ranking", "Image ranking", "Image classification"])
-session_state = get_state()
 Sections.header()
+col1, col2 = st.beta_columns([1, 2])
+col1.markdown(" "); col1.markdown(" ")
+col1.markdown("#### Task selection")
+task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
+st.markdown(" "); st.markdown(" ")
+
+session_state = get_state()
 if task_name == "Image classification":
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
@@ -263,6 +281,7 @@ elif task_name == "Image ranking":
     limit_number_prompts(session_state)
     Sections.multiple_images_input_preview(session_state)
     Sections.classification_output(session_state)
-    print(session_state.images)
 
+st.markdown("Created by [@JavierFnts](https://twitter.com/JavierFnts) |"
+            " [How was CLIP playground created?](https://twitter.com/JavierFnts)")
 session_state.sync()
