@@ -49,6 +49,16 @@ def limit_number_prompts(state: SessionState):
         state.prompts = [state.prompts[0]]
 
 
+def is_valid_prediction_state(state: SessionState) -> bool:
+    if state.images is None or len(state.images) < 1:
+        st.error("Choose at least one image before predicting")
+        return False
+    if state.prompts is None or len(state.prompts) < 1:
+        st.error("Write at least one prompt before predicting")
+        return False
+    return True
+
+
 class Sections:
     @staticmethod
     def header():
@@ -198,7 +208,7 @@ class Sections:
     @staticmethod
     def classification_output(state: SessionState):
         # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
-        if st.button("Predict"):  # PREDICT 🚀
+        if st.button("Predict") and is_valid_prediction_state(state):  # PREDICT 🚀
             with st.spinner("Predicting..."):
                 if isinstance(state.images[0], str):
                     clip_response = booste.clip(BOOSTE_API_KEY,
@@ -246,7 +256,7 @@ col1, col2 = st.beta_columns([1, 2])
 col1.markdown(" "); col1.markdown(" ")
 col1.markdown("#### Task selection")
 task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
-st.markdown(" "); st.markdown(" ")
+st.markdown("<br>", unsafe_allow_html=True)
 
 session_state = get_state()
 if task_name == "Image classification":
@@ -282,6 +292,6 @@ elif task_name == "Image ranking":
     Sections.multiple_images_input_preview(session_state)
     Sections.classification_output(session_state)
 
-st.markdown("Created by [@JavierFnts](https://twitter.com/JavierFnts) |"
-            " [How was CLIP playground created?](https://twitter.com/JavierFnts)")
+st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) " # "|  [How was CLIP Playground made?](https://twitter.com/JavierFnts)"
+            "", unsafe_allow_html=True)
 session_state.sync()
