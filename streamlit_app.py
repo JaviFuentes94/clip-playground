@@ -324,6 +324,6 @@ elif task_name == "Image ranking":
     Sections.multiple_images_input_preview(session_state)
     Sections.classification_output(session_state)
 
-st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) " # "|  [How was CLIP Playground made?](https://twitter.com/JavierFnts)"
+st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) | [How was CLIP Playground built?](https://twitter.com/JavierFnts/status/1363522529072214019)"
             "", unsafe_allow_html=True)
 session_state.sync()
