@@ -112,14 +112,12 @@ class Sections:
             col2.image("https://openaiassets.blob.core.windows.net/$web/clip/draft/20210104b/overview-b.svg")
         with st.beta_expander("What can CLIP do?"):
             st.markdown("#### Prompt ranking")
-            st.markdown("Given different prompts and an image it will rank the different prompts based on the similarity"
-                        " with what the image represents")
+            st.markdown("Given different prompts and an image CLIP will rank the different prompts based on how well they describe the image")
             st.markdown("#### Image ranking")
-            st.markdown("Given different images and a prompt it will rank the different images based on the similarity"
-                        " with what the prompt expresses")
+            st.markdown("Given different images and a prompt CLIP will rank the different images based on how well they fit the description")
             st.markdown("#### Image classification")
-            st.markdown("Similar to prompt ranking, given a set of classes it can classify an image between them. "
-                        "Think of [Hotdog/ Not hotdog](https://www.youtube.com/watch?v=pqTntG1RXSY&ab_channel=tvpromos) without any training. ")
+            st.markdown("Similar to prompt ranking, given a set of classes CLIP can classify an image between them. "
+                        "Think of [Hotdog/ Not hotdog](https://www.youtube.com/watch?v=pqTntG1RXSY&ab_channel=tvpromos) without any training.")
         st.markdown(" ")
         st.markdown(" ")
 
@@ -176,10 +174,11 @@ class Sections:
 
     @staticmethod
     def prompts_input(state: SessionState, input_label: str, prompt_prefix: str = ''):
-        raw_classes = st.text_input(input_label,
+        raw_text_input = st.text_input(input_label,
                                     value=state.default_text_input if state.default_text_input is not None else "")
-        if raw_classes:
-            state.prompts = [prompt_prefix + class_name for class_name in raw_classes.split(";") if len(class_name) > 1]
+        state.is_default_text_input = raw_text_input == state.default_text_input
+        if raw_text_input:
+            state.prompts = [prompt_prefix + class_name for class_name in raw_text_input.split(";") if len(class_name) > 1]
 
     @staticmethod
     def single_image_input_preview(state: SessionState):
@@ -270,6 +269,18 @@ class Sections:
                         col1.image(image, use_column_width=True)
                         percentage_prob = int(probability * 100)
                         col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
+                is_default_image = isinstance(state.images[0], str)
+                is_default_prediction = is_default_image and state.is_default_text_input
+                if is_default_prediction:
+                    st.markdown("<br>:information_source: Try writing your own prompts and using your own pictures!",
+                                unsafe_allow_html=True)
+                elif is_default_image:
+                    st.markdown("<br>:information_source: You can also use your own pictures!",
+                                unsafe_allow_html=True)
+                elif state.is_default_text_input:
+                    st.markdown("<br>:information_source: Try writing your own prompts!"
+                                " It can be whatever you can think of",
+                                unsafe_allow_html=True)
 
 
 Sections.header()
