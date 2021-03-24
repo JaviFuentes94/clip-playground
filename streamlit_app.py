@@ -146,7 +146,7 @@ class Sections:
                 state.images = [default_image_1]
                 state.default_text_input = default_text_input
         with col2:
-            default_image_2 = "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg"
+            default_image_2 = "https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg"
             st.image(default_image_2, use_column_width=True)
             if st.button("Select image 2"):
                 state.images = [default_image_2]
