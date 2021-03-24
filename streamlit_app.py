@@ -290,6 +290,8 @@ col1.markdown("#### Task selection")
 task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
 st.markdown("<br>", unsafe_allow_html=True)
 
+images_mocker.stop_mocking()  # Sometimes it gets stuck mocking
+
 session_state = get_state()
 if task_name == "Image classification":
     Sections.image_uploader(session_state, accept_multiple_files=False)
