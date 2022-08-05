@@ -1,40 +1,36 @@
 import random
+import requests
 
 import streamlit as st
+from clip_model import ClipModel
 
 from session_state import SessionState, get_state
 from images_mocker import ImagesMocker
 
-images_mocker = ImagesMocker()
-import booste
-
 from PIL import Image
-
-# Unfortunately Streamlit sharing does not allow to hide enviroment variables yet.
-# Do not copy this API key, go to https://www.booste.io/ and get your own, it is free!
-BOOSTE_API_KEY = "3818ba84-3526-4029-9dc8-ef3038697ea2"
 
 IMAGES_LINKS = ["https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2019/09/06/04/25/beach-4455433_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2019/10/19/12/21/hot-air-balloons-4561264_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2019/12/17/18/20/peacock-4702197_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2020/12/28/22/48/buddha-5868759_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/11/04/15/29/coffee-beans-5712780_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/03/24/20/42/namibia-4965457_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/27/07/31/restaurant-5521372_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2020/08/28/06/13/building-5523630_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/24/21/41/couple-5515141_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/01/31/07/10/billboards-4807268_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2017/07/31/20/48/shell-2560930_960_720.jpg",
                 "https://cdn.pixabay.com/photo/2020/08/13/01/29/koala-5483931_960_720.jpg",
-                # "https://cdn.pixabay.com/photo/2016/11/29/04/52/architecture-1867411_960_720.jpg",
                 ]
 
 @st.cache  # Cache this so that it doesn't change every time something changes in the page
-def select_random_dataset():
-    return random.sample(IMAGES_LINKS, 10)
+def load_default_dataset():
+    return [load_image_from_url(url) for url in IMAGES_LINKS]
+
+def load_image_from_url(url: str) -> Image.Image:
+    return Image.open(requests.get(url, stream=True).raw)
+
+@st.cache
+def load_model() -> ClipModel:
+    return ClipModel()
 
 
 def limit_number_images(state: SessionState):
@@ -140,19 +136,19 @@ class Sections:
     def image_picker(state: SessionState, default_text_input: str):
         col1, col2, col3 = st.beta_columns(3)
         with col1:
-            default_image_1 = "https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg"
+            default_image_1 = load_image_from_url("https://cdn.pixabay.com/photo/2014/10/13/21/34/clipper-487503_960_720.jpg")
             st.image(default_image_1, use_column_width=True)
             if st.button("Select image 1"):
                 state.images = [default_image_1]
                 state.default_text_input = default_text_input
         with col2:
-            default_image_2 = "https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg"
+            default_image_2 = load_image_from_url("https://cdn.pixabay.com/photo/2019/11/11/14/30/zebra-4618513_960_720.jpg")
             st.image(default_image_2, use_column_width=True)
             if st.button("Select image 2"):
                 state.images = [default_image_2]
                 state.default_text_input = default_text_input
         with col3:
-            default_image_3 = "https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg"
+            default_image_3 = load_image_from_url("https://cdn.pixabay.com/photo/2016/11/15/16/24/banana-1826760_960_720.jpg")
             st.image(default_image_3, use_column_width=True)
             if st.button("Select image 3"):
                 state.images = [default_image_3]
@@ -161,7 +157,7 @@ class Sections:
     @staticmethod
     def dataset_picker(state: SessionState):
         columns = st.beta_columns(5)
-        state.dataset = select_random_dataset()
+        state.dataset = load_default_dataset()
         image_idx = 0
         for col in columns:
             col.image(state.dataset[image_idx])
@@ -226,61 +222,50 @@ class Sections:
                 st.warning("Enter the prompt to classify")
 
     @staticmethod
-    def classification_output(state: SessionState):
+    def classification_output(state: SessionState, model: ClipModel):
         # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
         if st.button("Predict") and is_valid_prediction_state(state):  # PREDICT 🚀
             with st.spinner("Predicting..."):
-                if isinstance(state.images[0], str):
-                    clip_response = booste.clip(BOOSTE_API_KEY,
-                                                prompts=state.prompts,
-                                                images=state.images)
-                else:
-                    images_mocker.calculate_image_id2image_lookup(state.images)
-                    images_mocker.start_mocking()
-                    clip_response = booste.clip(BOOSTE_API_KEY,
-                                                prompts=state.prompts,
-                                                images=images_mocker.image_ids)
-                    images_mocker.stop_mocking()
+                
                 st.markdown("### Results")
                 # st.write(clip_response)
                 if len(state.images) == 1:
-                    simplified_clip_results = [(prompt,
-                                                list(results.values())[0]["probabilityRelativeToPrompts"])
-                                               for prompt, results in clip_response.items()]
-                    simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
-
-                    for prompt, probability in simplified_clip_results:
+                    scores = model.compute_prompts_probabilities(state.images[0], state.prompts)
+                    scored_prompts = [(prompt, score) for prompt, score in zip(state.prompts, scores)]
+                    st.json(scores)
+                    sorted_scored_prompts = sorted(scored_prompts, key=lambda x: x[1], reverse=True)
+                    for prompt, probability in sorted_scored_prompts:
                         percentage_prob = int(probability * 100)
                         st.markdown(
                             f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200) &nbsp &nbsp {prompt}")
-                else:
+                elif len(state.prompts) == 1:
                     st.markdown(f"### {state.prompts[0]}")
-                    assert len(state.prompts) == 1
-                    if isinstance(state.images[0], str):
-                        simplified_clip_results = [(image, results["probabilityRelativeToImages"]) for image, results
-                                                   in list(clip_response.values())[0].items()]
-                    else:
-                        simplified_clip_results = [(images_mocker.image_id2image(image),
-                                                    results["probabilityRelativeToImages"]) for image, results
-                                                   in list(clip_response.values())[0].items()]
-                    simplified_clip_results = sorted(simplified_clip_results, key=lambda x: x[1], reverse=True)
-                    for image, probability in simplified_clip_results[:5]:
+                    
+                    scores = model.compute_prompts_probabilities(state.images[0], state.prompts)
+                    scored_images = [(image, score) for image, score in zip(state.images, scores)]
+                    st.json(scores)
+                    sorted_scored_images = sorted(scored_prompts, key=lambda x: x[1], reverse=True)
+
+                    for image, probability in sorted_scored_images[:5]:
                         col1, col2 = st.beta_columns([1, 3])
                         col1.image(image, use_column_width=True)
                         percentage_prob = int(probability * 100)
                         col2.markdown(f"### ![prob](https://progress-bar.dev/{percentage_prob}/?width=200)")
-                is_default_image = isinstance(state.images[0], str)
-                is_default_prediction = is_default_image and state.is_default_text_input
-                if is_default_prediction:
-                    st.markdown("<br>:information_source: Try writing your own prompts and using your own pictures!",
-                                unsafe_allow_html=True)
-                elif is_default_image:
-                    st.markdown("<br>:information_source: You can also use your own pictures!",
-                                unsafe_allow_html=True)
-                elif state.is_default_text_input:
-                    st.markdown("<br>:information_source: Try writing your own prompts!"
-                                " It can be whatever you can think of",
-                                unsafe_allow_html=True)
+                else:
+                    raise ValueError("Invalid state")
+                
+                # is_default_image = isinstance(state.images[0], str)
+                # is_default_prediction = is_default_image and state.is_default_text_input
+                # if is_default_prediction:
+                #     st.markdown("<br>:information_source: Try writing your own prompts and using your own pictures!",
+                #                 unsafe_allow_html=True)
+                # elif is_default_image:
+                #     st.markdown("<br>:information_source: You can also use your own pictures!",
+                #                 unsafe_allow_html=True)
+                # elif state.is_default_text_input:
+                #     st.markdown("<br>:information_source: Try writing your own prompts!"
+                #                 " It can be whatever you can think of",
+                #                 unsafe_allow_html=True)
 
 
 Sections.header()
@@ -290,8 +275,7 @@ col1.markdown("#### Task selection")
 task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
 st.markdown("<br>", unsafe_allow_html=True)
 
-images_mocker.stop_mocking()  # Sometimes it gets stuck mocking
-
+model = load_model()
 session_state = get_state()
 if task_name == "Image classification":
     Sections.image_uploader(session_state, accept_multiple_files=False)
@@ -302,7 +286,7 @@ if task_name == "Image classification":
     Sections.prompts_input(session_state, input_label, prompt_prefix='A picture of a ')
     limit_number_images(session_state)
     Sections.single_image_input_preview(session_state)
-    Sections.classification_output(session_state)
+    Sections.classification_output(session_state, model)
 elif task_name == "Prompt ranking":
     Sections.image_uploader(session_state, accept_multiple_files=False)
     if session_state.images is None:
@@ -315,7 +299,7 @@ elif task_name == "Prompt ranking":
     Sections.prompts_input(session_state, input_label)
     limit_number_images(session_state)
     Sections.single_image_input_preview(session_state)
-    Sections.classification_output(session_state)
+    Sections.classification_output(session_state, model)
 elif task_name == "Image ranking":
     Sections.image_uploader(session_state, accept_multiple_files=True)
     if session_state.images is None or len(session_state.images) < 2:
@@ -324,7 +308,7 @@ elif task_name == "Image ranking":
     Sections.prompts_input(session_state, "Enter the prompt to query the images by")
     limit_number_prompts(session_state)
     Sections.multiple_images_input_preview(session_state)
-    Sections.classification_output(session_state)
+    Sections.classification_output(session_state, model)
 
 st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) | [How was CLIP Playground built?](https://twitter.com/JavierFnts/status/1363522529072214019)"
             "", unsafe_allow_html=True)

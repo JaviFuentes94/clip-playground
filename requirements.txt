@@ -1,4 +1,4 @@
 streamlit~=0.76.0
-booste==0.2.8
+git+https://github.com/openai/CLIP@b46f5ac
 Pillow==8.1.0
 mock==4.0.3
