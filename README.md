@@ -7,7 +7,7 @@ sdk: streamlit
 sdk_version: 1.10.0
 app_file: app.py
 pinned: true
-python_version: 3.10.6
+python_version: 3.10.5
 tags: 
     - clip
     - openAI
