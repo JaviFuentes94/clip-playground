@@ -7,7 +7,14 @@ sdk: streamlit
 sdk_version: 1.10.0
 app_file: app.py
 pinned: true
-tags: [clip, openAI, image, prompt, image classification, prompt ranking, multimodal]
+tags: 
+    - clip
+    - openAI
+    - image
+    - prompt
+    - image classification
+    - prompt ranking
+    - multimodal
 license: apache-2.0
 ---
 
