@@ -2,6 +2,8 @@ import clip
 from PIL.Image import Image
 import torch
 
+
+
 class ClipModel:
     def __init__(self, model_name: str = 'RN50') -> None:
         """
@@ -42,7 +44,7 @@ class ClipModel:
         preprocessed_images = [self._img_preprocess(image).unsqueeze(0) for image in images]
         tokenized_prompts = clip.tokenize(prompt)
         with torch.inference_mode():
-            image_features = self._model.encode_image(torch.cat(preprocessed_images))
+            image_features = torch.cat([self._model.encode_image(preprocessed_image) for preprocessed_image in preprocessed_images])
             text_features = self._model.encode_text(tokenized_prompts)
 
             # normalized features
@@ -51,8 +53,19 @@ class ClipModel:
 
             # cosine similarity as logits
             logit_scale = self._model.logit_scale.exp()
-            logits_per_image = logit_scale * image_features @ text_features.t()
+            logits_per_image = logit_scale * text_features @ image_features.t()
 
             probs = list(logits_per_image.softmax(dim=-1).cpu().numpy()[0])
 
         return probs
+
+if __name__ == "__main__":
+    from app import load_default_dataset
+
+    model = ClipModel()
+    images = load_default_dataset()
+    prompts = ['Hello', 'How are you', 'Goodbye']
+    prompts_scores = model.compute_prompts_probabilities(images[0], prompts)
+    images_scores = model.compute_images_probabilities(images, prompts[0])
+    print(f"Prompts scores: {prompts_scores}")
+    print(f"Images scores: {images_scores}")

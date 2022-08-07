@@ -230,8 +230,7 @@ class Sections:
 
     @staticmethod
     def classification_output(model: ClipModel):
-        # Possible way of customize this https://discuss.streamlit.io/t/st-button-in-a-custom-layout/2187/2
-        if st.button("Predict") and is_valid_prediction_state():  # PREDICT 🚀
+        if st.button("Predict") and is_valid_prediction_state():
             with st.spinner("Predicting..."):
                 
                 st.markdown("### Results")
@@ -247,7 +246,6 @@ class Sections:
                     st.markdown(f"### {st.session_state.prompts[0]}")
                     
                     scores = model.compute_images_probabilities(st.session_state.images, st.session_state.prompts[0])
-                    st.json(scores)
                     scored_images = [(image, score) for image, score in zip(st.session_state.images, scores)]
                     sorted_scored_images = sorted(scored_images, key=lambda x: x[1], reverse=True)
 
@@ -272,47 +270,47 @@ class Sections:
                 #                 " It can be whatever you can think of",
                 #                 unsafe_allow_html=True)
 
+if __name__ == "__main__":
+    Sections.header()
+    col1, col2 = st.columns([1, 2])
+    col1.markdown(" "); col1.markdown(" ")
+    col1.markdown("#### Task selection")
+    task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
+    st.markdown("<br>", unsafe_allow_html=True)
+    init_state()
+    model = load_model()
+    if task_name == "Image classification":
+        Sections.image_uploader(accept_multiple_files=False)
+        if st.session_state.images is None:
+            st.markdown("or choose one from")
+            Sections.image_picker(default_text_input="banana; boat; bird")
+        input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
+        Sections.prompts_input(input_label, prompt_prefix='A picture of a ')
+        limit_number_images()
+        Sections.single_image_input_preview()
+        Sections.classification_output(model)
+    elif task_name == "Prompt ranking":
+        Sections.image_uploader(accept_multiple_files=False)
+        if st.session_state.images is None:
+            st.markdown("or choose one from")
+            Sections.image_picker(default_text_input="A calm afternoon in the Mediterranean; "
+                                                                    "A beautiful creature;"
+                                                                    " Something that grows in tropical regions")
+        input_label = "Enter the prompts to choose from separated by a semi-colon. " \
+                    "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
+        Sections.prompts_input(input_label)
+        limit_number_images()
+        Sections.single_image_input_preview()
+        Sections.classification_output(model)
+    elif task_name == "Image ranking":
+        Sections.image_uploader(accept_multiple_files=True)
+        if st.session_state.images is None or len(st.session_state.images) < 2:
+            st.markdown("or use this random dataset")
+            Sections.dataset_picker()
+        Sections.prompts_input("Enter the prompt to query the images by")
+        limit_number_prompts()
+        Sections.multiple_images_input_preview()
+        Sections.classification_output(model)
 
-Sections.header()
-col1, col2 = st.columns([1, 2])
-col1.markdown(" "); col1.markdown(" ")
-col1.markdown("#### Task selection")
-task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
-st.markdown("<br>", unsafe_allow_html=True)
-init_state()
-model = load_model()
-if task_name == "Image classification":
-    Sections.image_uploader(accept_multiple_files=False)
-    if st.session_state.images is None:
-        st.markdown("or choose one from")
-        Sections.image_picker(default_text_input="banana; boat; bird")
-    input_label = "Enter the classes to chose from separated by a semi-colon. (f.x. `banana; boat; honesty; apple`)"
-    Sections.prompts_input(input_label, prompt_prefix='A picture of a ')
-    limit_number_images()
-    Sections.single_image_input_preview()
-    Sections.classification_output(model)
-elif task_name == "Prompt ranking":
-    Sections.image_uploader(accept_multiple_files=False)
-    if st.session_state.images is None:
-        st.markdown("or choose one from")
-        Sections.image_picker(default_text_input="A calm afternoon in the Mediterranean; "
-                                                                "A beautiful creature;"
-                                                                " Something that grows in tropical regions")
-    input_label = "Enter the prompts to choose from separated by a semi-colon. " \
-                  "(f.x. `An image that inspires; A feeling of loneliness; joyful and young; apple`)"
-    Sections.prompts_input(input_label)
-    limit_number_images()
-    Sections.single_image_input_preview()
-    Sections.classification_output(model)
-elif task_name == "Image ranking":
-    Sections.image_uploader(accept_multiple_files=True)
-    if st.session_state.images is None or len(st.session_state.images) < 2:
-        st.markdown("or use this random dataset")
-        Sections.dataset_picker()
-    Sections.prompts_input("Enter the prompt to query the images by")
-    limit_number_prompts()
-    Sections.multiple_images_input_preview()
-    Sections.classification_output(model)
-
-st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) | [How was CLIP Playground built?](https://twitter.com/JavierFnts/status/1363522529072214019)"
-            "", unsafe_allow_html=True)
+    st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) | [How was CLIP Playground built?](https://twitter.com/JavierFnts/status/1363522529072214019)"
+                "", unsafe_allow_html=True)
