@@ -26,8 +26,8 @@ def load_image_from_url(url: str) -> Image.Image:
     return Image.open(requests.get(url, stream=True).raw)
 
 @st.cache
-def load_model() -> ClipModel:
-    return ClipModel()
+def load_model(model_architecture: str) -> ClipModel:
+    return ClipModel(model_architecture)
 
 def init_state():
     if "images" not in st.session_state:
@@ -38,6 +38,8 @@ def init_state():
         st.session_state.predictions = None
     if "default_text_input" not in st.session_state:
         st.session_state.default_text_input = None
+    if "model_architecture" not in st.session_state:
+        st.session_state.model_architecture = "RN50"
 
 
 def limit_number_images():
@@ -278,7 +280,7 @@ if __name__ == "__main__":
     task_name: str = col2.selectbox("", options=["Prompt ranking", "Image ranking", "Image classification"])
     st.markdown("<br>", unsafe_allow_html=True)
     init_state()
-    model = load_model()
+    model = load_model(st.session_state.model_architecture)
     if task_name == "Image classification":
         Sections.image_uploader(accept_multiple_files=False)
         if st.session_state.images is None:
@@ -311,6 +313,10 @@ if __name__ == "__main__":
         limit_number_prompts()
         Sections.multiple_images_input_preview()
         Sections.classification_output(model)
+    
+    with st.expander("Advanced settings"):
+        st.session_state.model_architecture = st.selectbox("Model architecture", options=['RN50', 'RN101', 'RN50x4', 'RN50x16', 'RN50x64', 'ViT-B/32',
+         'ViT-B/16', 'ViT-L/14', 'ViT-L/14@336px'], index=0)
 
     st.markdown("<br><br><br><br>Made by [@JavierFnts](https://twitter.com/JavierFnts) | [How was CLIP Playground built?](https://twitter.com/JavierFnts/status/1363522529072214019)"
                 "", unsafe_allow_html=True)
