@@ -16,6 +16,8 @@ tags:
     - image classification
     - prompt ranking
     - multimodal
+    - nlp
+    - computer vision
 license: apache-2.0
 ---
 
